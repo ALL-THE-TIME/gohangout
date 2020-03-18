@@ -29,7 +29,7 @@ func (c *IntConverter) convert(v interface{}) (interface{}, error) {
 		}
 	}
 	if reflect.TypeOf(v).Kind() == reflect.String {
-		i, err := strconv.ParseInt(v.(string), 0, 32)
+		i, err := strconv.ParseInt(v.(string), 0, 64)
 		if err == nil {
 			return (int)(i), err
 		} else {
@@ -69,7 +69,7 @@ type ConvertFilter struct {
 	fields map[field_setter.FieldSetter]ConveterAndRender
 }
 
-func NewConvertFilter(config map[interface{}]interface{}) *ConvertFilter {
+func (l *MethodLibrary) NewConvertFilter(config map[interface{}]interface{}) *ConvertFilter {
 	plugin := &ConvertFilter{
 		config: config,
 		fields: make(map[field_setter.FieldSetter]ConveterAndRender),

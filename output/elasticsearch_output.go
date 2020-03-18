@@ -5,14 +5,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/childe/gohangout/simplejson"
+	"github.com/childe/gohangout/codec"
 	"github.com/childe/gohangout/value_render"
 	"github.com/golang/glog"
 )
 
 const (
-	DEFAULT_INDEX_TYPE  = "logs"
-	META_FORMAT_WITH_ID = `{"%s":{"_index":%s,"_type":%s,"_id":%s,"routing":%s}}` + "\n"
+	DEFAULT_INDEX_TYPE = "logs"
+)
+
+var (
+	f func() codec.Encoder
 )
 
 type Action struct {
@@ -30,35 +33,29 @@ func (action *Action) Encode() []byte {
 		meta []byte = make([]byte, 0, 1000)
 		buf  []byte
 		err  error
-		d    = &simplejson.SimpleJsonDecoder{}
 	)
 	meta = append(meta, `{"`+action.op+`":{"_index":`...)
-	index, _ := d.Encode(action.index)
+	index, _ := f().Encode(action.index)
 	meta = append(meta, index...)
-	d.Reset()
 
 	meta = append(meta, `,"_type":`...)
-	index_type, _ := d.Encode(action.index_type)
+	index_type, _ := f().Encode(action.index_type)
 	meta = append(meta, index_type...)
-	d.Reset()
 
 	if action.id != "" {
 		meta = append(meta, `,"_id":`...)
-		doc_id, _ := d.Encode(action.id)
+		doc_id, _ := f().Encode(action.id)
 		meta = append(meta, doc_id...)
-		d.Reset()
 	}
 
 	meta = append(meta, `,"routing":`...)
-	routing, _ := d.Encode(action.routing)
+	routing, _ := f().Encode(action.routing)
 	meta = append(meta, routing...)
-	d.Reset()
 
 	meta = append(meta, "}}\n"...)
 
 	if action.rawSource == nil {
-		d.Reset()
-		buf, err = d.Encode(action.event)
+		buf, err = f().Encode(action.event)
 		if err != nil {
 			glog.Errorf("could marshal event(%v):%s", action.event, err)
 			return nil
@@ -95,7 +92,6 @@ func (br *ESBulkRequest) readBuf() []byte {
 }
 
 type ElasticsearchOutput struct {
-	BaseOutput
 	config map[interface{}]interface{}
 
 	index              value_render.ValueRender
@@ -177,16 +173,29 @@ func buildRetryBulkRequest(shouldRetry, noRetry []int, bulkRequest *BulkRequest)
 	return nil
 }
 
-func NewElasticsearchOutput(config map[interface{}]interface{}) *ElasticsearchOutput {
+func (l *MethodLibrary) NewElasticsearchOutput(config map[interface{}]interface{}) *ElasticsearchOutput {
 	rst := &ElasticsearchOutput{
-		BaseOutput: NewBaseOutput(config),
-		config:     config,
+		config: config,
 	}
+
+	_codec := "simplejson"
+	if v, ok := config["codec"]; ok {
+		_codec = v.(string)
+	}
+	f = func() codec.Encoder { return codec.NewEncoder(_codec) }
 
 	if v, ok := config["index"]; ok {
 		rst.index = value_render.GetValueRender(v.(string))
 	} else {
 		glog.Fatal("index must be set in elasticsearch output")
+	}
+
+	if v, ok := config["index_time_location"]; ok {
+		if e, ok := rst.index.(*value_render.IndexRender); ok {
+			e.SetTimeLocation(v.(string))
+		} else {
+			glog.Fatal("index_time_location is not supported in this index format")
+		}
 	}
 
 	if v, ok := config["index_type"]; ok {

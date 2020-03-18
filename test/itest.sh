@@ -1,4 +1,5 @@
-go build -o build/gohangout-test
+go build -o build/gohangout-test || exit 255
+gohangout='build/gohangout-test'
 
 em_print() {
   echo "\n======="
@@ -9,7 +10,7 @@ em_print() {
 em_print 'test multi inputs&outputs'
 tmpfile=$(mktemp)
 
-build/gohangout-test --config test/itest-1.yml > $tmpfile
+$gohangout --config test/itest-1.yml > $tmpfile
 
 wcl=`wc -l $tmpfile | awk '{print $1}'`
 echo  "$wcl lines in output"
@@ -21,7 +22,7 @@ then
 fi
 
 em_print 'test simple filters with if condition'
-build/gohangout-test --config test/itest-2.yml > $tmpfile
+$gohangout --config test/itest-2.yml > $tmpfile
 
 wcl=`wc -l $tmpfile | awk '{print $1}'`
 echo  "$wcl lines in output"
@@ -33,7 +34,7 @@ then
 fi
 
 em_print 'test output with if condition'
-build/gohangout-test --config test/itest-3.yml > $tmpfile
+$gohangout --config test/itest-3.yml > $tmpfile
 
 wcl=`wc -l $tmpfile | awk '{print $1}'`
 echo  "$wcl lines in output"
@@ -44,8 +45,8 @@ then
     exit 255
 fi
 
-em_print 'test filterFilter'
-build/gohangout-test --config test/itest-4.yml > $tmpfile
+em_print 'test filtersFilter'
+$gohangout --config test/itest-4.yml > $tmpfile
 
 wcl=`wc -l $tmpfile | awk '{print $1}'`
 echo  "$wcl lines in output"
@@ -74,9 +75,9 @@ then
     exit 255
 fi
 
-em_print 'test LinkMetrcik Filter 1: seperate'
+em_print 'test LinkMetricInFilters'
 
-(build/gohangout-test --config test/itest-6.yml && sleep 1) | build/gohangout-test --config test/itest-6-2.yml > $tmpfile
+($gohangout --config test/itest-6.yml && sleep 1) | $gohangout --config test/LinkMetricInFilters.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -87,7 +88,20 @@ then
     exit 255
 fi
 
-(build/gohangout-test --config test/itest-6.yml && sleep 2) | build/gohangout-test --config test/itest-6-2.yml > $tmpfile
+em_print 'test LinkMetric Filter 1: seperate'
+
+($gohangout --config test/itest-6.yml && sleep 1) | $gohangout --config test/itest-6-2.yml > $tmpfile
+
+wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
+echo  "$wcl metric lines in output"
+
+if [ "$wcl" != "4" ]
+then
+	em_print  'metric should output 8 docs!'
+    exit 255
+fi
+
+($gohangout --config test/itest-6.yml && sleep 2) | $gohangout --config test/itest-6-2.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -107,9 +121,9 @@ then
     exit 255
 fi
 
-em_print 'test LinkMetrcik Filter 2: cumulative'
+em_print 'test LinkMetric Filter 2: cumulative'
 
-(build/gohangout-test --config test/itest-6.yml && sleep 1) | build/gohangout-test --config test/itest-6-3.yml > $tmpfile
+($gohangout --config test/itest-6.yml && sleep 1) | $gohangout --config test/itest-6-3.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -120,7 +134,7 @@ then
     exit 255
 fi
 
-(build/gohangout-test --config test/itest-6.yml && sleep 2) | build/gohangout-test --config test/itest-6-3.yml > $tmpfile
+($gohangout --config test/itest-6.yml && sleep 2) | $gohangout --config test/itest-6-3.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -140,9 +154,9 @@ then
     exit 255
 fi
 
-em_print 'test LinkMetrcik Filter 3: seperate'
+em_print 'test LinkMetric Filter 3: seperate'
 
-(build/gohangout-test --config test/itest-6.yml && sleep 2 && build/gohangout-test --config test/itest-6.yml && sleep 2) | build/gohangout-test --config test/itest-6-2.yml > $tmpfile
+($gohangout --config test/itest-6.yml && sleep 2 && $gohangout --config test/itest-6.yml && sleep 2) | $gohangout --config test/itest-6-2.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -162,9 +176,9 @@ then
     exit 255
 fi
 
-em_print 'test LinkMetrcik Filter 4: cumulative'
+em_print 'test LinkMetric Filter 4: cumulative'
 
-(build/gohangout-test --config test/itest-6.yml && sleep 1 && build/gohangout-test --config test/itest-6.yml && sleep 2) | build/gohangout-test --config test/itest-6-4.yml > $tmpfile
+($gohangout --config test/itest-6.yml && sleep 1 && $gohangout --config test/itest-6.yml && sleep 2) | $gohangout --config test/itest-6-4.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -186,7 +200,7 @@ fi
 
 em_print 'test LinkStatsMetrcik Filter'
 
-(build/gohangout-test --config test/itest-6.yml && sleep 1 && build/gohangout-test --config test/itest-6.yml && sleep 2) | build/gohangout-test --config test/itest-7-1.yml > $tmpfile
+($gohangout --config test/itest-6.yml && sleep 1 && $gohangout --config test/itest-6.yml && sleep 2) | $gohangout --config test/itest-7-1.yml > $tmpfile
 
 wcl=`grep count $tmpfile | wc -l | awk '{print $1}'`
 echo  "$wcl metric lines in output"
@@ -204,4 +218,4 @@ then
     exit $?
 fi
 
-em_print 'ok'
+em_print 'pass :)'
